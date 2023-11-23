@@ -1,0 +1,57 @@
+﻿using System;
+using System.Collections.Generic;
+using GestioneNotifiche.Core.Database.Model;
+using Microsoft.EntityFrameworkCore;
+
+namespace GestioneNotifiche.Core.Database;
+
+public partial class BdmonitorContext : DbContext
+{
+    private static string _connString = "";
+    public BdmonitorContext()
+    {
+    }
+
+    public BdmonitorContext(string connectionString)
+    {
+        _connString = connectionString;
+    }
+
+    public BdmonitorContext(DbContextOptions<BdmonitorContext> options)
+        : base(options)
+    {
+    }
+
+    public virtual DbSet<BdmEsecuzioneServiziStudi> BdmEsecuzioneServiziStudis { get; set; }
+    public virtual DbSet<StudiParametri> StudiParametris { get; set; }
+    public virtual DbSet<OreAttivitaUtentiStudio> OreAttivitaUtentiStudios { get; set; }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        => optionsBuilder.UseSqlServer(_connString);
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.UseCollation("Latin1_General_CI_AS");
+
+        modelBuilder.Entity<OreAttivitaUtentiStudio>(entity =>
+        {
+            entity.HasNoKey();
+        });
+
+        modelBuilder.Entity<StudiParametri>(entity =>
+        {
+            entity.HasNoKey();
+        });
+
+        modelBuilder.Entity<BdmEsecuzioneServiziStudi>(entity =>
+        {
+            entity.HasKey(e => e.IdEsecuzione);
+
+            entity.ToTable("BDM_EsecuzioneServiziStudi");
+        });
+
+        OnModelCreatingPartial(modelBuilder);
+    }
+
+    partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
+}
