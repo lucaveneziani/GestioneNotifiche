@@ -6,6 +6,7 @@ using GestioneNotifiche.Core.Logger;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Metadata;
 using GestioneNotifiche.Core.Mail;
+using GestioneNotifiche.Core.Database.Model;
 
 namespace GestioneNotifiche
 {
@@ -31,7 +32,8 @@ namespace GestioneNotifiche
                 try
                 {
                     Initialize();
-
+                    //TODO notificare al servizio di monitoraggio che sono vivo
+                    _logger.Info("Avvio polling servizio");
                     _logger.Info("Variabili sessione:" + "\n" + JsonSerializer.Serialize(_sessione));
                     _logger.Info("Parametri di configurazione:" + "\n" + JsonSerializer.Serialize(_config));
 
@@ -50,14 +52,12 @@ namespace GestioneNotifiche
 
                         if ((lastDateExec == DateOnly.FromDateTime(dateTimeDefaultPar)) || (lastDateExec.AddDays(Convert.ToInt32(parGiorni)) < DateOnly.FromDateTime(DateTime.Now)))
                         {
-                            //se il valore è default o la data di ultima esecuzione + il parametro di ripetizione è minore della data attuale allora passa qui dentro 
                             //TODO testare se la condizione per la quale è già stato eseguito un controllo, funziona
-                            GeneraNoficaQuadratureOre(studio.First().IdStudio, lastDateExec);
+                            _logger.Info("Inizio qaduratura per lo studio con id: " + studio.First().IdStudio + " dalla data: " + lastDateExec);
+                            GeneraNotificaQuadratureOre(studio.First().IdStudio, lastDateExec);
+                            //TODO notificare al servizio di monitoraggio che sto iniziando il metodo
                             //TODO sistemare il conteggio delle date e del tempo di modo che funzioni anche per UTC diversi
                             //(articolo mirko relativo al commento sopra https://code-maze.com/convert-datetime-to-iso-8601-string-csharp/)
-
-                            //TODO sistemare il metodo di send delle mail passandogli le corrette mailinglist e mailing body
-                            //SendMails();
                         }
                         else
                             _logger.Info("Nessuna quadratura da eseguire in base alle tempistiche impostate");
@@ -70,8 +70,8 @@ namespace GestioneNotifiche
                 }
                 finally
                 {
-                    //await Task.Delay(_config.ServicePollingMinutes * 60000, stoppingToken); 
-                    await Task.Delay(_config.ServicePollingMinutes * 100, stoppingToken);
+                    await Task.Delay(_config.ServicePollingMinutes * 60000, stoppingToken); 
+                    //await Task.Delay(_config.ServicePollingMinutes * 100, stoppingToken);
                 }
             }
         }
@@ -79,33 +79,92 @@ namespace GestioneNotifiche
         {
             _dbContext = new BdmonitorContextRepository(_config.ConnectionString);
             _assembly = Assembly.GetExecutingAssembly();
-            _sessione = new SessioneRepository(_assembly, _config).Get();
+            _sessione = new SessioneRepository(_assembly, _config, _dbContext).Get();
             _logger = new LoggerFile(_sessione);
             _emailSender = new EmailSender(_config.MailConfig);
             //TODO all'apertura del servizio di polling mi deve anche eliminare i record vecchi dalla BDM_EsecuzionServiziStudi
             //loggo anche quanti record ho eliminato e in che data
+            //TODO scrivere sull'EP del servizio di monitoraggio l'identificativo e l'hostname del servizio
         }
-        private void GeneraNoficaQuadratureOre(int idStudio, DateOnly dataDa)
+        private void GeneraNotificaQuadratureOre(int idStudio, DateOnly dataDa)
         {
             var oreAttivitaUtenti = _dbContext.GetOreAttivitaUtentiStudio(idStudio, dataDa);
             var liUtenti = oreAttivitaUtenti.GroupBy(x => x.Utente);
+            var idEsecServiziStudi = InsertEsecuzioneServiziStudi(liUtenti.Count(), idStudio);
+            var liMailNotifiche = new List<MailNotifica>();
 
-            foreach(var ut in liUtenti)
+            _logger.Info("Utenti da controllare " + liUtenti.Count());
+
+            foreach (var ut in liUtenti)
             {
                 var utente = ut.First();
                 var liUtenteGiorniDaQuadrare = oreAttivitaUtenti.Where(x => x.Utente == utente.Utente && x.MinutiDaLavorare != x.MinutiLavorati);
 
-                //mi segno tutti i giorni da quadrare
-                //creo una mail per ogni utente dello studio che ha giorni da quadrare
-                //creo una mailinglist generica per tutti gli utenti che non hanno giorni da quadrare
-                //se l'invio delle mail è andato a buon fine scirvo sul database nella tabella BDM_EsecuzioneServiziStudi (forse devo cambiare i campi di questa tabella?)
-                //mi ricordo di loggare tutto
+                if (liUtenteGiorniDaQuadrare.Count() == 0)
+                {
+                    //TODO riabilitarlo prima della release
+                    //liMailNotifiche.Add(new MailNotifica(utente.Utente, dataDa));
+                    liMailNotifiche.Add(new MailNotifica("luca.veneziani@mastersoftsrl.it", dataDa));
+                    _logger.Info("L'utente " + utente.Utente + " NON ha giornate da quadrare!");
+                }
+                else
+                {
+                    liMailNotifiche.Add(new MailNotifica(liUtenteGiorniDaQuadrare, dataDa));
+                    foreach (var giornata in liUtenteGiorniDaQuadrare)
+                        _logger.Info("L'utente: " + utente.Utente + " deve quadrare il giorno: " + giornata.Data_Inizio + 
+                                " minuti da lavorare: " + giornata.MinutiDaLavorare + " e ne ha lavorati: " + giornata.MinutiLavorati);
+                }
             }
+            var liMailNotificheNonRiuscite = SendMails(liMailNotifiche, idEsecServiziStudi);
+            _logger.Info("Numero di mail non notificate: " + liMailNotificheNonRiuscite.Count());
+            _logger.Info("Fine polling servizio");
+            //TODO se liMailNotificheNonRiuscite.Count() > 0 allora mando una mail dal servizio di monitoraggio
         }
-        private void SendMails()
+        private int InsertEsecuzioneServiziStudi(int numUtenti, int idStudio)
         {
-            var message = new Message(new string[] { "luca.veneziani@mastersoftsrl.it" }, "subject", "mailbody");
-            _emailSender.SendEmail(message);
+            int idEsecuzione = 0;
+
+            if (numUtenti > 0)
+            {
+                var esecServiziStudi = new BdmEsecuzioneServiziStudi() { IdServizio = _sessione.IdServizio, IdStudio = idStudio, DataExec = DateOnly.FromDateTime(DateTime.UtcNow) };
+                _dbContext.BdmEsecuzioneServiziStudis.Add(esecServiziStudi);
+                _dbContext.SaveChanges();
+                idEsecuzione = esecServiziStudi.IdEsecuzione;
+                _logger.Info("Inserito record nella tabella BDM_EsecuzioneServiziStudi - " + JsonSerializer.Serialize(esecServiziStudi));
+            }
+
+            return idEsecuzione;
+        }
+        private List<MailNotifica> SendMails(List<MailNotifica> liMailNotifiche, int idEsecuzione)
+        {
+            var liMailNotificheNonRisucite = new List<MailNotifica>();
+
+            foreach (var mail in liMailNotifiche)
+            {
+                var result = _emailSender.SendEmail(mail);
+                var mailSent = false;
+
+                if (!string.IsNullOrEmpty(result))
+                {
+                    liMailNotificheNonRisucite.Add(mail);
+                    _logger.Info("Invio mail all'utente " + mail.To.First() + " FALLITO");
+                }
+                else
+                {
+                    mailSent = true;
+                    _logger.Info("Invio mail all'utente " + mail.To.First() + " RIUSCITO");
+                }
+                InsertEsecuzioneServiziStudiDettagli(idEsecuzione, mail.To.First().Address, mailSent);
+            }
+
+            return liMailNotificheNonRisucite;
+        }
+        private void InsertEsecuzioneServiziStudiDettagli(int idEsecuzione, string username, bool mailSent)
+        {
+            var eseServiziStudiDett = new BdmEsecuzioneServiziStudiDettagli() { IdEsecuzione = idEsecuzione, Utente = username, MailSent = mailSent };
+            _dbContext.BdmEsecuzioneServiziStudiDettaglis.Add(eseServiziStudiDett);
+            _dbContext.SaveChanges();
+            _logger.Info("Inserito record nella tabella BDM_EsecuzioneServiziStudiDettagli - " + JsonSerializer.Serialize(eseServiziStudiDett));
         }
     }
 }

@@ -11,8 +11,6 @@ options = builder.Configuration
                         .Get<ConfigurationOption>();
 
 builder.Services.AddSingleton(options);
-//builder.Services.AddTransient<IEmailSender, EmailSender>();
-//builder.Services.AddScoped<IEmailSender, EmailSender>();
 var host = builder.Build();
 
 host.Run();

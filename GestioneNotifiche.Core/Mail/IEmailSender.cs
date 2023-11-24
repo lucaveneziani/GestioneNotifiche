@@ -8,6 +8,6 @@ namespace GestioneNotifiche.Core.Mail
 {
     public interface IEmailSender
     {
-        void SendEmail(Message message);
+        string SendEmail(MailNotifica message);
     }
 }

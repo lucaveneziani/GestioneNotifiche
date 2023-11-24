@@ -15,12 +15,12 @@ namespace GestioneNotifiche.Core.Mail
         {
             _emailConfig = emailConfig;
         }
-        public void SendEmail(Message message)
+        public string SendEmail(MailNotifica message)
         {
             var emailMessage = CreateEmailMessage(message);
-            Send(emailMessage);
+            return Send(emailMessage);
         }
-        private MimeMessage CreateEmailMessage(Message message)
+        private MimeMessage CreateEmailMessage(MailNotifica message)
         {
             var emailMessage = new MimeMessage();
             emailMessage.From.Add(new MailboxAddress("assistenza@pitousrl.it", _emailConfig.From));
@@ -29,10 +29,11 @@ namespace GestioneNotifiche.Core.Mail
             emailMessage.Body = new TextPart(MimeKit.Text.TextFormat.Text) { Text = message.Content };
             return emailMessage;
         }
-        private void Send(MimeMessage mailMessage)
+        private string Send(MimeMessage mailMessage)
         {
             using (var client = new SmtpClient())
             {
+                var result = "";
                 try
                 {
                     client.Connect(_emailConfig.SmtpServer, _emailConfig.Port, true);
@@ -40,16 +41,16 @@ namespace GestioneNotifiche.Core.Mail
                     client.Authenticate(_emailConfig.MailUserName, _emailConfig.MailPassword);
                     client.Send(mailMessage);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    //log an error message or throw an exception or both.
-                    throw;
+                    result = ex.Message; 
                 }
                 finally
                 {
                     client.Disconnect(true);
                     client.Dispose();
                 }
+                return result;
             }
         }
     }

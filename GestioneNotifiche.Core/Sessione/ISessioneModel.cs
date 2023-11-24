@@ -12,5 +12,7 @@ namespace GestioneNotifiche.Core.Sessione
     {
         IConfigurazioneModel Configurazione { get; set; }
         string LogFilePath { get; set; }
+        int IdServizio { get; set; }
+        string IndirizzoIpServizio { get; set; }
     }
 }

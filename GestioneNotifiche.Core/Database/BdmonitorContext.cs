@@ -25,6 +25,8 @@ public partial class BdmonitorContext : DbContext
     public virtual DbSet<BdmEsecuzioneServiziStudi> BdmEsecuzioneServiziStudis { get; set; }
     public virtual DbSet<StudiParametri> StudiParametris { get; set; }
     public virtual DbSet<OreAttivitaUtentiStudio> OreAttivitaUtentiStudios { get; set; }
+    public virtual DbSet<BdmServizi> BdmServizis { get; set; }
+    public virtual DbSet<BdmEsecuzioneServiziStudiDettagli> BdmEsecuzioneServiziStudiDettaglis { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         => optionsBuilder.UseSqlServer(_connString);
@@ -32,6 +34,24 @@ public partial class BdmonitorContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.UseCollation("Latin1_General_CI_AS");
+
+        modelBuilder.Entity<BdmEsecuzioneServiziStudiDettagli>(entity =>
+        {
+            entity.HasKey(e => e.IdEsecuzioneDettaglio);
+
+            entity.ToTable("BDM_EsecuzioneServiziStudiDettagli");
+
+            entity.Property(e => e.Utente).HasMaxLength(256);
+        });
+
+        modelBuilder.Entity<BdmServizi>(entity =>
+        {
+            entity.HasKey(e => e.IdServizio);
+
+            entity.ToTable("BDM_Servizi");
+
+            entity.Property(e => e.Descrizione).IsUnicode(false);
+        });
 
         modelBuilder.Entity<OreAttivitaUtentiStudio>(entity =>
         {
