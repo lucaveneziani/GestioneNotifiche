@@ -16,9 +16,10 @@ namespace GestioneNotifiche.Core.Mail
             {
                 EnableSsl = true,
                 UseDefaultCredentials = false,
-                Credentials = new NetworkCredential(mailInfo.From, mailInfo.MailPassword)
+                DeliveryMethod = SmtpDeliveryMethod.Network,
+                Credentials = new NetworkCredential(mailInfo.MailUserName, mailInfo.MailPassword)
             };
-
+            
             return client.SendMailAsync(
                 new MailMessage(from: mailInfo.From,
                                 to: email,

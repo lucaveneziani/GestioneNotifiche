@@ -53,9 +53,10 @@ namespace GestioneNotifiche
                         {
                             //se il valore è default o la data di ultima esecuzione + il parametro di ripetizione è minore della data attuale allora passa qui dentro 
                             //TODO testare se la condizione per la quale è già stato eseguito un controllo, funziona
-                            GeneraNoficaQuadratureOre(studio.First().IdStudio, Convert.ToDateTime(lastDateExec));
+                            GeneraNoficaQuadratureOre(studio.First().IdStudio, lastDateExec);
                             //TODO sistemare il conteggio delle date e del tempo di modo che funzioni anche per UTC diversi
                             //(articolo mirko relativo al commento sopra https://code-maze.com/convert-datetime-to-iso-8601-string-csharp/)
+
                             await _emailSender.SendEmailAsync("luca.veneziani@mastersoftsrl.it", "subject", "text", _config.MailConfig); //va segato da qui non appena ho capit ocome spedire mail
                         }
                         else
@@ -69,8 +70,8 @@ namespace GestioneNotifiche
                 }
                 finally
                 {
-                    await Task.Delay(_config.ServicePollingMinutes * 60000, stoppingToken); 
-                    //await Task.Delay(_config.ServicePollingMinutes * 100, stoppingToken);
+                    //await Task.Delay(_config.ServicePollingMinutes * 60000, stoppingToken); 
+                    await Task.Delay(_config.ServicePollingMinutes * 100, stoppingToken);
                 }
             }
         }
@@ -83,16 +84,15 @@ namespace GestioneNotifiche
             //TODO all'apertura del servizio di polling mi deve anche eliminare i record vecchi dalla BDM_EsecuzionServiziStudi
             //loggo anche quanti record ho eliminato e in che data
         }
-        private void GeneraNoficaQuadratureOre(int idStudio, DateTime dataDa)
+        private void GeneraNoficaQuadratureOre(int idStudio, DateOnly dataDa)
         {
             var oreAttivitaUtenti = _dbContext.GetOreAttivitaUtentiStudio(idStudio, dataDa);
-            var liUtenti = oreAttivitaUtenti.GroupBy(x => x.Username);
+            var liUtenti = oreAttivitaUtenti.GroupBy(x => x.Utente);
 
             foreach(var ut in liUtenti)
             {
                 var utente = ut.First();
-                var liUtenteOreAttivita = oreAttivitaUtenti.Where(x => x.Username == utente.Username);
-                var liGiorniDaQuadrare = liUtenteOreAttivita.Where(x => x.MinutiDaLavorare != x.MinutiLavorati);
+                var liUtenteGiorniDaQuadrare = oreAttivitaUtenti.Where(x => x.Utente == utente.Utente && x.MinutiDaLavorare != x.MinutiLavorati);
 
                 //mi segno tutti i giorni da quadrare
                 //creo una mail per ogni utente dello studio che ha giorni da quadrare

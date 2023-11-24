@@ -28,7 +28,7 @@ namespace GestioneNotifiche.Core.Database
             var res = StudiParametris.FromSqlRaw<StudiParametri>("spGetStudiParametri {0}", Convert.ToInt32(abilitato).ToString()).ToList();
             return res;
         }
-        public List<OreAttivitaUtentiStudio> GetOreAttivitaUtentiStudio(int idStudio, DateTime dataDa)
+        public List<OreAttivitaUtentiStudio> GetOreAttivitaUtentiStudio(int idStudio, DateOnly dataDa)
         {
             var res = OreAttivitaUtentiStudios.FromSqlRaw<OreAttivitaUtentiStudio>("spGetOreAttivitaUtentiStudio {0},{1}", idStudio, dataDa).ToList();
             return res;
