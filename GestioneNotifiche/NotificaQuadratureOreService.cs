@@ -16,13 +16,12 @@ namespace GestioneNotifiche
         private ISessioneModel _sessione;
         private LoggerFile _logger;
         private BdmonitorContextRepository _dbContext;
-        private readonly IEmailSender _emailSender;
+        private IEmailSender _emailSender;
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-        public NotificaQuadratureOreService(ConfigurationOption config, IEmailSender emailSender)
+        public NotificaQuadratureOreService(ConfigurationOption config)
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _config = config;
-            _emailSender = emailSender;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -57,7 +56,8 @@ namespace GestioneNotifiche
                             //TODO sistemare il conteggio delle date e del tempo di modo che funzioni anche per UTC diversi
                             //(articolo mirko relativo al commento sopra https://code-maze.com/convert-datetime-to-iso-8601-string-csharp/)
 
-                            await _emailSender.SendEmailAsync("luca.veneziani@mastersoftsrl.it", "subject", "text", _config.MailConfig); //va segato da qui non appena ho capit ocome spedire mail
+                            //TODO sistemare il metodo di send delle mail passandogli le corrette mailinglist e mailing body
+                            //SendMails();
                         }
                         else
                             _logger.Info("Nessuna quadratura da eseguire in base alle tempistiche impostate");
@@ -81,6 +81,7 @@ namespace GestioneNotifiche
             _assembly = Assembly.GetExecutingAssembly();
             _sessione = new SessioneRepository(_assembly, _config).Get();
             _logger = new LoggerFile(_sessione);
+            _emailSender = new EmailSender(_config.MailConfig);
             //TODO all'apertura del servizio di polling mi deve anche eliminare i record vecchi dalla BDM_EsecuzionServiziStudi
             //loggo anche quanti record ho eliminato e in che data
         }
@@ -100,6 +101,11 @@ namespace GestioneNotifiche
                 //se l'invio delle mail è andato a buon fine scirvo sul database nella tabella BDM_EsecuzioneServiziStudi (forse devo cambiare i campi di questa tabella?)
                 //mi ricordo di loggare tutto
             }
+        }
+        private void SendMails()
+        {
+            var message = new Message(new string[] { "luca.veneziani@mastersoftsrl.it" }, "subject", "mailbody");
+            _emailSender.SendEmail(message);
         }
     }
 }

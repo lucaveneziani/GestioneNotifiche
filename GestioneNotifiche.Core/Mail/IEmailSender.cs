@@ -8,6 +8,6 @@ namespace GestioneNotifiche.Core.Mail
 {
     public interface IEmailSender
     {
-        Task SendEmailAsync(string email, string subject, string message, EmailConfiguration mailInfo);
+        void SendEmail(Message message);
     }
 }
