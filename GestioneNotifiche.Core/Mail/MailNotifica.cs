@@ -19,7 +19,7 @@ namespace GestioneNotifiche.Core.Mail
             Subject = subject;
             Content = content;
         }
-        public MailNotifica (IEnumerable<OreAttivitaUtentiStudio> liUtenteGiorniDaNotificare, DateOnly dataDa)
+        public MailNotifica (IEnumerable<OreAttivitaUtentiStudio> liUtenteGiorniDaNotificare, DateOnly dataDa, string timeZone)
         {
             var mailBody = "";
 
@@ -33,19 +33,18 @@ namespace GestioneNotifiche.Core.Mail
             //TODO riabilitarlo prima della release
             //To.Add(new MailboxAddress("assistenza@pitousrl.it", liUtenteGiorniDaNotificare.First().Utente));
             To.Add(new MailboxAddress("assistenza@pitousrl.it", "luca.veneziani@mastersoftsrl.it"));
-            Subject = GetSubject(dataDa);
+            Subject = GetSubject(dataDa, timeZone);
             Content = mailBody;
         }
-        public MailNotifica(string mailAddress, DateOnly dataDa)
+        public MailNotifica(string mailAddress, DateOnly dataDa, string timeZone)
         {
             To.Add(new MailboxAddress("assistenza@pitousrl.it", mailAddress));
-            Subject = GetSubject(dataDa);
+            Subject = GetSubject(dataDa, timeZone);
             Content = "Ottimo lavoro, tutte le ore inserite risultano quadrate correttamente!";
         }
-        private string GetSubject(DateOnly dataDa)
+        private string GetSubject(DateOnly dataDa, string timeZone)
         {
-
-            var subject = "Quadratura ore da " + dataDa + " a " + DateTime.UtcNow.Date;
+            var subject = "Quadratura ore da " + dataDa + " a " + TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById(timeZone)).Date;
             return subject;
         }
     }

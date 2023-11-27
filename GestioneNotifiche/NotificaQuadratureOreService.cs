@@ -10,6 +10,7 @@ using GestioneNotifiche.Core.Database.Model;
 using System.ComponentModel;
 using System.Diagnostics.Eventing.Reader;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using System;
 
 namespace GestioneNotifiche
 {
@@ -34,6 +35,7 @@ namespace GestioneNotifiche
             {
                 try
                 {
+                    //var timeZones = TimeZoneInfo.GetSystemTimeZones(); mi restituisce l'elenco di tutte le timezone esistenti
                     Initialize();
                     //TODO notificare al servizio di monitoraggio che sono vivo
                     _logger.Info("Avvio polling servizio");
@@ -50,16 +52,16 @@ namespace GestioneNotifiche
                         var lastDateExec = studio.First().DataExec;
                         var parGiorni = studio.First(x => x.IdParametroServizio == 2).Valore;
                         var dataInizio = DateOnly.FromDateTime(Convert.ToDateTime(studio.First(x => x.IdParametroServizio == 1).Valore).Date);
+                        var timeZone = studio.First().TimeZone;
+
                         _logger.Info(JsonSerializer.Serialize(studio));
 
-                        if (ControllaSeQuadrare(parGiorni, lastDateExec, dataInizio))
+                        if (ControllaSeQuadrare(parGiorni, lastDateExec, dataInizio, timeZone))
                         {
                             var dataDaQuadratura = (dataInizio > lastDateExec) ? dataInizio : lastDateExec;
                             _logger.Info("Inizio qaduratura per lo studio con id: " + studio.First().IdStudio + " dalla data: " + dataDaQuadratura);
-                            GeneraNotificaQuadratureOre(studio.First().IdStudio, dataDaQuadratura);
+                            GeneraNotificaQuadratureOre(studio.First().IdStudio, dataDaQuadratura, timeZone);
                             //TODO notificare al servizio di monitoraggio che sto iniziando il metodo
-                            //TODO sistemare il conteggio delle date e del tempo di modo che funzioni anche per UTC diversi
-                            //(articolo mirko relativo al commento sopra https://code-maze.com/convert-datetime-to-iso-8601-string-csharp/)
                         }
                         else
                             _logger.Info("Nessuna quadratura da eseguire in base alle tempistiche impostate");
@@ -77,9 +79,9 @@ namespace GestioneNotifiche
                 }
             }
         }
-        private bool ControllaSeQuadrare (string parGiorni, DateOnly lastDateExec, DateOnly dataInizio)
+        private bool ControllaSeQuadrare (string parGiorni, DateOnly lastDateExec, DateOnly dataInizio, string timeZone)
         {
-            var dateNow = DateOnly.FromDateTime(DateTime.UtcNow);
+            var dateNow = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById(timeZone)));
 
             if (dataInizio >= dateNow)
                 return false;
@@ -110,7 +112,6 @@ namespace GestioneNotifiche
                         {
                             var dataFineMese = new DateOnly(lastDateExec.Year, lastDateExec.Month, DateTime.DaysInMonth(lastDateExec.Year, lastDateExec.Month));
 
-                            //if ((lastDateExec != dataFineMese) && (dataFineMese < DateOnly.FromDateTime(DateTime.UtcNow)))
                             dateNow = DateOnly.FromDateTime(new DateTime(2023, 11, 1,0,0,0));
                             if ((dataFineMese < dateNow) && (dateNow.Day == 1))
                                 return true;
@@ -127,13 +128,11 @@ namespace GestioneNotifiche
             _sessione = new SessioneRepository(_assembly, _config, _dbContext).Get();
             _logger = new LoggerFile(_sessione);
             _emailSender = new EmailSender(_config.MailConfig);
-            //TODO all'apertura del servizio di polling mi deve anche eliminare i record vecchi dalla BDM_EsecuzionServiziStudi
-            //loggo anche quanti record ho eliminato e in che data
             var res = _dbContext.ClearDbTable(_config.EsecuzioneServizioDaysBackup);
             _logger.Info(res);
             //TODO scrivere sull'EP del servizio di monitoraggio l'identificativo e l'hostname del servizio
         }
-        private void GeneraNotificaQuadratureOre(int idStudio, DateOnly dataDa)
+        private void GeneraNotificaQuadratureOre(int idStudio, DateOnly dataDa, string timeZone)
         {
             var oreAttivitaUtenti = _dbContext.GetOreAttivitaUtentiStudio(idStudio, dataDa);
             var liUtenti = oreAttivitaUtenti.GroupBy(x => x.Utente);
@@ -151,12 +150,12 @@ namespace GestioneNotifiche
                 {
                     //TODO riabilitarlo prima della release
                     //liMailNotifiche.Add(new MailNotifica(utente.Utente, dataDa));
-                    liMailNotifiche.Add(new MailNotifica("luca.veneziani@mastersoftsrl.it", dataDa));
+                    liMailNotifiche.Add(new MailNotifica("luca.veneziani@mastersoftsrl.it", dataDa, timeZone));
                     _logger.Info("L'utente " + utente.Utente + " NON ha giornate da quadrare!");
                 }
                 else
                 {
-                    liMailNotifiche.Add(new MailNotifica(liUtenteGiorniDaQuadrare, dataDa));
+                    liMailNotifiche.Add(new MailNotifica(liUtenteGiorniDaQuadrare, dataDa, timeZone));
                     foreach (var giornata in liUtenteGiorniDaQuadrare)
                         _logger.Info("L'utente: " + utente.Utente + " deve quadrare il giorno: " + giornata.Data_Inizio + 
                                 " minuti da lavorare: " + giornata.MinutiDaLavorare + " e ne ha lavorati: " + giornata.MinutiLavorati);

@@ -16,5 +16,6 @@ namespace GestioneNotifiche.Core.Database.Model
         public string Codice_Fiscale { get; set; } = "";
         public DateOnly DataExec { get; set; }
         public string Valore { get; set; } = "";
+        public string TimeZone { get; set; } = "";
     }
 }
