@@ -7,6 +7,8 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Metadata;
 using GestioneNotifiche.Core.Mail;
 using GestioneNotifiche.Core.Database.Model;
+using System.ComponentModel;
+using System.Diagnostics.Eventing.Reader;
 
 namespace GestioneNotifiche
 {
@@ -44,15 +46,11 @@ namespace GestioneNotifiche
 
                     foreach (var studio in liStudi)
                     {
-                        var parGiorni = studio.First(x => x.IdParametroServizio == 2).Valore;
-                        var dateTimeDefaultPar = new DateTime(1900, 1, 1);
                         var lastDateExec = studio.First().DataExec;
-
                         _logger.Info(JsonSerializer.Serialize(studio));
 
-                        if ((lastDateExec == DateOnly.FromDateTime(dateTimeDefaultPar)) || (lastDateExec.AddDays(Convert.ToInt32(parGiorni)) < DateOnly.FromDateTime(DateTime.Now)))
+                        if (ControllaSeQuadrare(studio))
                         {
-                            //TODO testare se la condizione per la quale è già stato eseguito un controllo, funziona
                             _logger.Info("Inizio qaduratura per lo studio con id: " + studio.First().IdStudio + " dalla data: " + lastDateExec);
                             GeneraNotificaQuadratureOre(studio.First().IdStudio, lastDateExec);
                             //TODO notificare al servizio di monitoraggio che sto iniziando il metodo
@@ -72,6 +70,57 @@ namespace GestioneNotifiche
                 {
                     await Task.Delay(_config.ServicePollingMinutes * 60000, stoppingToken); 
                     //await Task.Delay(_config.ServicePollingMinutes * 100, stoppingToken);
+                }
+            }
+        }
+        private bool ControllaSeQuadrare (IGrouping<int,StudiParametri> studio)
+        {
+            var dateTimeDefaultPar = new DateTime(1900, 1, 1);
+            var parGiorni = studio.First(x => x.IdParametroServizio == 2).Valore;
+            var lastDateExec = studio.First().DataExec;
+            var dataInizio = Convert.ToDateTime(studio.First(x => x.IdParametroServizio == 1).Valore).Date;
+
+            if (dataInizio >= DateTime.UtcNow.Date)
+                return false;
+
+            if (lastDateExec == DateOnly.FromDateTime(dateTimeDefaultPar))
+                return true;
+            else
+            {
+                if (Int32.TryParse(parGiorni, out var numGiorniAttesa))
+                {
+                    if (lastDateExec.AddDays(numGiorniAttesa) <= DateOnly.FromDateTime(DateTime.UtcNow))
+                        return true;
+                    else return false;
+                }
+                else
+                {
+                    switch(parGiorni.ToLower())
+                    {
+                        case "giornaliero":
+                        {
+                                if (lastDateExec != DateOnly.FromDateTime(DateTime.UtcNow))
+                                    return true;
+                                else return false;
+                        }
+                        case "settimanale":
+                            {
+                                var dateNow = DateOnly.FromDateTime(DateTime.UtcNow);
+
+                                if (lastDateExec < dateNow && (dateNow.DayOfWeek == DayOfWeek.Monday))
+                                    return true;
+                                else return false;
+                            }
+                        case "mensile":
+                            {
+                                var dataFineMese = new DateOnly(lastDateExec.Year, lastDateExec.Month, DateTime.DaysInMonth(lastDateExec.Year, lastDateExec.Month));
+
+                                if ((lastDateExec != dataFineMese) && (dataFineMese < DateOnly.FromDateTime(DateTime.UtcNow)))
+                                    return true;
+                                else return false;
+                            }
+                        default: return false;
+                    }
                 }
             }
         }
