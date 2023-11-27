@@ -13,8 +13,8 @@ namespace PublishPrices.Config
     public class ConfigurationOption : IConfigurazioneModel
     {
         public string ConnectionString { get; set; } = "";
-        public string LogDaysBackup { get; set; } = "";
-        public string EsecuzioneServizioDaysBackup { get; set; } = "";
+        public int LogDaysBackup { get; set; }
+        public int EsecuzioneServizioDaysBackup { get; set; }
         public Int32 ServicePollingMinutes { get; set; } = 30;
         public EmailConfiguration MailConfig { get; set;} = new EmailConfiguration();
     }

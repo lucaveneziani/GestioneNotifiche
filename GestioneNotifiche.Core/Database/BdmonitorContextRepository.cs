@@ -1,4 +1,5 @@
 ﻿using GestioneNotifiche.Core.Database.Model;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -32,6 +33,34 @@ namespace GestioneNotifiche.Core.Database
         {
             var res = OreAttivitaUtentiStudios.FromSqlRaw<OreAttivitaUtentiStudio>("spGetOreAttivitaUtentiStudio {0},{1}", idStudio, dataDa).ToList();
             return res;
+        }
+        public string ClearDbTable(int giorniBackup)
+        {
+            var spOutput = GetSqlParameterOutput("@OutMessage", System.Data.SqlDbType.VarChar);
+            spOutput.Size = int.MaxValue;
+            var parGiorniBackup = GetSqlParameter("@giorniBackup", giorniBackup);
+
+            var liParams = new object[]
+            {
+                parGiorniBackup,
+                spOutput
+            };
+
+            Database.ExecuteSqlRaw("EXEC spDeleteEsecuzioneServizi @giorniBackup, @OutMessage OUT", liParams);
+            return spOutput.Value.ToString();
+        }
+        protected SqlParameter GetSqlParameterOutput(string paramName, System.Data.SqlDbType type)
+        {
+            return new SqlParameter
+            {
+                ParameterName = paramName,
+                SqlDbType = type,
+                Direction = System.Data.ParameterDirection.Output
+                };
+        }
+        protected SqlParameter GetSqlParameter(string paramName, object value)
+        {
+            return new SqlParameter(paramName, value ?? DBNull.Value);
         }
     }
 }

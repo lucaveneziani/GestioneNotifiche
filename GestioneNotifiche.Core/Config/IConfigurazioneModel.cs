@@ -10,6 +10,6 @@ namespace GestioneNotifiche.Core.Config
     public interface IConfigurazioneModel
     {
         public string ConnectionString { get; set; } 
-        public string LogDaysBackup { get; set; }
+        public int LogDaysBackup { get; set; }
     }
 }

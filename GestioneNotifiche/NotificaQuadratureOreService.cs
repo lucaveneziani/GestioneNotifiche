@@ -9,6 +9,7 @@ using GestioneNotifiche.Core.Mail;
 using GestioneNotifiche.Core.Database.Model;
 using System.ComponentModel;
 using System.Diagnostics.Eventing.Reader;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace GestioneNotifiche
 {
@@ -47,12 +48,15 @@ namespace GestioneNotifiche
                     foreach (var studio in liStudi)
                     {
                         var lastDateExec = studio.First().DataExec;
+                        var parGiorni = studio.First(x => x.IdParametroServizio == 2).Valore;
+                        var dataInizio = DateOnly.FromDateTime(Convert.ToDateTime(studio.First(x => x.IdParametroServizio == 1).Valore).Date);
                         _logger.Info(JsonSerializer.Serialize(studio));
 
-                        if (ControllaSeQuadrare(studio))
+                        if (ControllaSeQuadrare(parGiorni, lastDateExec, dataInizio))
                         {
-                            _logger.Info("Inizio qaduratura per lo studio con id: " + studio.First().IdStudio + " dalla data: " + lastDateExec);
-                            GeneraNotificaQuadratureOre(studio.First().IdStudio, lastDateExec);
+                            var dataDaQuadratura = (dataInizio > lastDateExec) ? dataInizio : lastDateExec;
+                            _logger.Info("Inizio qaduratura per lo studio con id: " + studio.First().IdStudio + " dalla data: " + dataDaQuadratura);
+                            GeneraNotificaQuadratureOre(studio.First().IdStudio, dataDaQuadratura);
                             //TODO notificare al servizio di monitoraggio che sto iniziando il metodo
                             //TODO sistemare il conteggio delle date e del tempo di modo che funzioni anche per UTC diversi
                             //(articolo mirko relativo al commento sopra https://code-maze.com/convert-datetime-to-iso-8601-string-csharp/)
@@ -73,54 +77,46 @@ namespace GestioneNotifiche
                 }
             }
         }
-        private bool ControllaSeQuadrare (IGrouping<int,StudiParametri> studio)
+        private bool ControllaSeQuadrare (string parGiorni, DateOnly lastDateExec, DateOnly dataInizio)
         {
-            var dateTimeDefaultPar = new DateTime(1900, 1, 1);
-            var parGiorni = studio.First(x => x.IdParametroServizio == 2).Valore;
-            var lastDateExec = studio.First().DataExec;
-            var dataInizio = Convert.ToDateTime(studio.First(x => x.IdParametroServizio == 1).Valore).Date;
+            var dateNow = DateOnly.FromDateTime(DateTime.UtcNow);
 
-            if (dataInizio >= DateTime.UtcNow.Date)
+            if (dataInizio >= dateNow)
                 return false;
 
-            if (lastDateExec == DateOnly.FromDateTime(dateTimeDefaultPar))
-                return true;
+            if (Int32.TryParse(parGiorni, out var numGiorniAttesa))
+            {
+                if (lastDateExec.AddDays(numGiorniAttesa) <= dateNow)
+                    return true;
+                else return false;
+            }
             else
             {
-                if (Int32.TryParse(parGiorni, out var numGiorniAttesa))
+                switch(parGiorni.ToLower())
                 {
-                    if (lastDateExec.AddDays(numGiorniAttesa) <= DateOnly.FromDateTime(DateTime.UtcNow))
-                        return true;
-                    else return false;
-                }
-                else
-                {
-                    switch(parGiorni.ToLower())
+                    case "giornaliero":
                     {
-                        case "giornaliero":
-                        {
-                                if (lastDateExec != DateOnly.FromDateTime(DateTime.UtcNow))
-                                    return true;
-                                else return false;
-                        }
-                        case "settimanale":
-                            {
-                                var dateNow = DateOnly.FromDateTime(DateTime.UtcNow);
-
-                                if (lastDateExec < dateNow && (dateNow.DayOfWeek == DayOfWeek.Monday))
-                                    return true;
-                                else return false;
-                            }
-                        case "mensile":
-                            {
-                                var dataFineMese = new DateOnly(lastDateExec.Year, lastDateExec.Month, DateTime.DaysInMonth(lastDateExec.Year, lastDateExec.Month));
-
-                                if ((lastDateExec != dataFineMese) && (dataFineMese < DateOnly.FromDateTime(DateTime.UtcNow)))
-                                    return true;
-                                else return false;
-                            }
-                        default: return false;
+                            if (lastDateExec != dateNow)
+                                return true;
+                            else return false;
                     }
+                    case "settimanale":
+                        {
+                            if (lastDateExec < dateNow && (dateNow.DayOfWeek == DayOfWeek.Monday))
+                                return true;
+                            else return false;
+                        }
+                    case "mensile":
+                        {
+                            var dataFineMese = new DateOnly(lastDateExec.Year, lastDateExec.Month, DateTime.DaysInMonth(lastDateExec.Year, lastDateExec.Month));
+
+                            //if ((lastDateExec != dataFineMese) && (dataFineMese < DateOnly.FromDateTime(DateTime.UtcNow)))
+                            dateNow = DateOnly.FromDateTime(new DateTime(2023, 11, 1,0,0,0));
+                            if ((dataFineMese < dateNow) && (dateNow.Day == 1))
+                                return true;
+                            else return false;
+                        }
+                    default: return false;
                 }
             }
         }
@@ -133,6 +129,8 @@ namespace GestioneNotifiche
             _emailSender = new EmailSender(_config.MailConfig);
             //TODO all'apertura del servizio di polling mi deve anche eliminare i record vecchi dalla BDM_EsecuzionServiziStudi
             //loggo anche quanti record ho eliminato e in che data
+            var res = _dbContext.ClearDbTable(_config.EsecuzioneServizioDaysBackup);
+            _logger.Info(res);
             //TODO scrivere sull'EP del servizio di monitoraggio l'identificativo e l'hostname del servizio
         }
         private void GeneraNotificaQuadratureOre(int idStudio, DateOnly dataDa)
