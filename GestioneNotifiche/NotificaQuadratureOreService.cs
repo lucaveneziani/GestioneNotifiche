@@ -166,7 +166,8 @@ namespace GestioneNotifiche
         }
         private void GeneraNotificaQuadratureOre(int idStudio, DateOnly dataDa, string timeZone)
         {
-            var oreAttivitaUtenti = _bdmAttivitaRepo.GetOreAttivitaUtentiStudio(idStudio, dataDa);
+            var dataA = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow.AddDays(-1), TimeZoneInfo.FindSystemTimeZoneById(timeZone)));
+            var oreAttivitaUtenti = _bdmAttivitaRepo.GetOreAttivitaUtentiStudio(idStudio, dataDa, dataA);
             var liUtenti = oreAttivitaUtenti.GroupBy(x => x.Utente);
             var idEsecServiziStudi = InsertEsecuzioneServiziStudi(liUtenti.Count(), idStudio);
             var liMailNotifiche = new List<MailNotifica>();
@@ -191,7 +192,7 @@ namespace GestioneNotifiche
                 {
                     liMailNotifiche.Add(new MailNotifica(liUtenteGiorniDaQuadrare, dataDa, timeZone));
                     foreach (var giornata in liUtenteGiorniDaQuadrare)
-                        _logger.Info("L'utente: " + utente.Utente + " deve quadrare il giorno: " + giornata.Data_Inizio + 
+                        _logger.Info("L'utente: " + utente.Utente + " deve quadrare il giorno: " + giornata.DataAttivita + 
                                 " minuti da lavorare: " + giornata.MinutiDaLavorare + " e ne ha lavorati: " + giornata.MinutiLavorati, _idService, ETipoLog.Info.ToString(), "GeneraNotificaQuadratureOre");
                 }
             }

@@ -24,7 +24,7 @@ namespace GestioneNotifiche.Core.Mail
         private MimeMessage CreateEmailMessage(IEmailNotifica message)
         {
             var emailMessage = new MimeMessage();
-            emailMessage.From.Add(new MailboxAddress("assistenza@pitousrl.it", _emailConfig.From));
+            emailMessage.From.Add(new MailboxAddress("smtp_pitou@fastera.systems", _emailConfig.From));
             emailMessage.To.AddRange(message.To);
             emailMessage.Subject = message.Subject;
             emailMessage.Body = new TextPart(MimeKit.Text.TextFormat.Text) { Text = message.Content };
@@ -37,7 +37,7 @@ namespace GestioneNotifiche.Core.Mail
                 var result = "";
                 try
                 {
-                    client.Connect(_emailConfig.SmtpServer, _emailConfig.Port, true);
+                    client.Connect(_emailConfig.SmtpServer, _emailConfig.Port, false);
                     client.AuthenticationMechanisms.Remove("XOAUTH2");
                     client.Authenticate(_emailConfig.MailUserName, _emailConfig.MailPassword);
                     client.Send(mailMessage);
