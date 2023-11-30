@@ -1,4 +1,5 @@
 ﻿using GestioneNotifiche.Core.Database.Model;
+using MasterSoft.Core.Mail;
 using MimeKit;
 using System;
 using System.Collections.Generic;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace GestioneNotifiche.Core.Mail
 {
-    public class MailNotifica
+    public class MailNotifica : IEmailNotifica
     {
         public List<MailboxAddress> To { get; set; } = new List<MailboxAddress>();
         public string Subject { get; set; } = "";

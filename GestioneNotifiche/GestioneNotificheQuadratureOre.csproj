@@ -15,4 +15,10 @@
   <ItemGroup>
     <ProjectReference Include="..\GestioneNotifiche.Core\GestioneNotifiche.Core.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="MasterSoft.Core">
+      <HintPath>..\ExternalReference\MasterSoft.Core.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 </Project>

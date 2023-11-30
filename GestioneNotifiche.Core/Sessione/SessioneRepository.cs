@@ -1,5 +1,6 @@
-﻿using GestioneNotifiche.Core.Config;
-using GestioneNotifiche.Core.Database;
+﻿using GestioneNotifiche.Core.Database;
+using MasterSoft.Core.Config;
+using MasterSoft.Core.Sessione;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -17,7 +18,7 @@ namespace GestioneNotifiche.Core.Sessione
     {
         private readonly Assembly m_assembly;
         private readonly IConfigurazioneModel m_configurazione;
-        private readonly BdmonitorContextRepository m_dbContext;
+        private readonly BdmonitorContext m_dbContext;
         private static bool IsDebug
         {
             get
@@ -30,7 +31,7 @@ namespace GestioneNotifiche.Core.Sessione
             }
         }
 
-        public SessioneRepository(Assembly assembly, IConfigurazioneModel configurazione, BdmonitorContextRepository dbContext)
+        public SessioneRepository(Assembly assembly, IConfigurazioneModel configurazione, BdmonitorContext dbContext)
         {
             m_assembly = assembly;
             m_configurazione = configurazione;
@@ -44,6 +45,7 @@ namespace GestioneNotifiche.Core.Sessione
                 Configurazione = m_configurazione,
                 LogFilePath = GetLogFilePath(),
                 IdServizio = GetIdService(),
+                GuidServizio = GetGuidService(),
                 IndirizzoIpServizio = GetHostnameService()
             };
         }
@@ -54,7 +56,12 @@ namespace GestioneNotifiche.Core.Sessione
             var path = assemblyPath == null ? "" : assemblyPath;
             return Path.Combine(path, "Log");
         }
-        
+
+        private string GetGuidService()
+        {
+            return m_dbContext.BdmServizis.First(x => x.Descrizione == "Notifica Quadrature Ore").GuidServizio;
+        }
+
         private int GetIdService()
         {
             return m_dbContext.BdmServizis.First(x => x.Descrizione == "Notifica Quadrature Ore").IdServizio;

@@ -1,4 +1,3 @@
-using PublishPrices.Config;
 using GestioneNotifiche.Core.Database;
 using System.Reflection;
 using GestioneNotifiche.Core.Sessione;
@@ -11,6 +10,16 @@ using System.ComponentModel;
 using System.Diagnostics.Eventing.Reader;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using System;
+using GestioneNotificaQuadratureOra.Config;
+using MasterSoft.Core.Sessione;
+using MasterSoft.Core.Mail;
+using GestioneNotifiche.Core.Database.Repository;
+using MasterSoft.Core.Logger;
+using MasterSoft.Core.EndPoint.SetMstServicePolling;
+using System.Net.Http;
+using System.Net.Http.Json;
+using GestioneNotifiche.Core.Endpoint;
+using MasterSoft.Core.Endpoint.SetMstServicePolling;
 
 namespace GestioneNotifiche
 {
@@ -20,8 +29,12 @@ namespace GestioneNotifiche
         private Assembly _assembly;
         private ISessioneModel _sessione;
         private LoggerFile _logger;
-        private BdmonitorContextRepository _dbContext;
+        private BdmonitorContext _dbContext;
         private IEmailSender _emailSender;
+        private int _idService = 0;
+        private BdmAttivitaRepository _bdmAttivitaRepo;
+        private BdmEsecuzioneServiziStudiRepository _bdmEsecuzioneServiziStudiRepo;
+        private StudiParametriRepository _studiParametriRepo;
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public NotificaQuadratureOreService(ConfigurationOption config)
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
@@ -37,40 +50,41 @@ namespace GestioneNotifiche
                 {
                     //var timeZones = TimeZoneInfo.GetSystemTimeZones(); mi restituisce l'elenco di tutte le timezone esistenti
                     Initialize();
-                    //TODO notificare al servizio di monitoraggio che sono vivo
-                    _logger.Info("Avvio polling servizio");
-                    _logger.Info("Variabili sessione:" + "\n" + JsonSerializer.Serialize(_sessione));
-                    _logger.Info("Parametri di configurazione:" + "\n" + JsonSerializer.Serialize(_config));
+                    _logger.Info("Avvio polling servizio", _sessione.IdServizio, ETipoLog.Info.ToString(), "ExecuteAsync");
+                    _logger.Info("Variabili sessione:" + "\n" + JsonSerializer.Serialize(_sessione), _idService, ETipoLog.Info.ToString(), "ExecuteAsync");
+                    _logger.Info("Parametri di configurazione:" + "\n" + JsonSerializer.Serialize(_config), _idService, ETipoLog.Info.ToString(), "ExecuteAsync");
+                
+                    SendPollingToMonitoringService(ETipoMetodoNotificaQuadratureOre.Alive, ETipoLog.Info, "Start Polling");
 
-                    var studiParametri = _dbContext.GetStudiParametri(true);
+                    var studiParametri = _studiParametriRepo.GetStudiParametri(true);
                     var liStudi = studiParametri.GroupBy(x => x.IdStudio);
 
-                    _logger.Info("Numero studi da analizzare:" + liStudi.Count());
+                    _logger.Info("Numero studi da analizzare:" + liStudi.Count(), _idService, ETipoLog.Info.ToString(), "ExecuteAsync");
 
                     foreach (var studio in liStudi)
                     {
                         var lastDateExec = studio.First().DataExec;
-                        var parGiorni = studio.First(x => x.IdParametroServizio == 2).Valore;
-                        var dataInizio = DateOnly.FromDateTime(Convert.ToDateTime(studio.First(x => x.IdParametroServizio == 1).Valore).Date);
+                        var parGiorni = studio.First(x => x.Descrizione == "Invia notifica quadratura ore ogni tot giorni").Valore;
+                        var dataInizio = DateOnly.FromDateTime(Convert.ToDateTime(studio.First(x => x.Descrizione == "Data inizio del servizio").Valore).Date);
                         var timeZone = studio.First().TimeZone;
 
-                        _logger.Info(JsonSerializer.Serialize(studio));
+                        _logger.Info(JsonSerializer.Serialize(studio), _idService, ETipoLog.Info.ToString(), "ExecuteAsync");
 
                         if (ControllaSeQuadrare(parGiorni, lastDateExec, dataInizio, timeZone))
                         {
                             var dataDaQuadratura = (dataInizio > lastDateExec) ? dataInizio : lastDateExec;
-                            _logger.Info("Inizio qaduratura per lo studio con id: " + studio.First().IdStudio + " dalla data: " + dataDaQuadratura);
+                            _logger.Info("Inizio qaduratura per lo studio con id: " + studio.First().IdStudio + " dalla data: " + dataDaQuadratura, _idService, ETipoLog.Info.ToString(), "ExecuteAsync");
                             GeneraNotificaQuadratureOre(studio.First().IdStudio, dataDaQuadratura, timeZone);
-                            //TODO notificare al servizio di monitoraggio che sto iniziando il metodo
                         }
                         else
-                            _logger.Info("Nessuna quadratura da eseguire in base alle tempistiche impostate");
+                            _logger.Info("Nessuna quadratura da eseguire in base alle tempistiche impostate", _idService, ETipoLog.Info.ToString(), "ExecuteAsync");
                     }
 
                 }
                 catch (Exception ex) 
                 {
-                    _logger.Exception(DateTime.Now + " --- " + "Errore: ", ex);
+                    _logger.Exception(DateTime.Now + " --- " + "Errore: ", ex, _idService, ETipoLog.Exception.ToString(), "ExecuteAsync");
+                    SendPollingToMonitoringService(ETipoMetodoNotificaQuadratureOre.Alive, ETipoLog.Exception, ex.Message);
                 }
                 finally
                 {
@@ -78,6 +92,19 @@ namespace GestioneNotifiche
                     //await Task.Delay(_config.ServicePollingMinutes * 100, stoppingToken);
                 }
             }
+        }
+        private async void SendPollingToMonitoringService(ETipoMetodoNotificaQuadratureOre metodo, ETipoLog tipo, string messaggio)
+        {
+            var reqContent = new SetMSTServicePollingRequest() { Metodo = metodo, GuidServizio = _sessione.GuidServizio, Tipo = Convert.ToInt32(tipo), Messaggio = messaggio};
+            var result = await new ApiCall(_config.MonitoringServiceUrl).Call("SetMSTServicePolling", reqContent);
+
+            if ((int)result.StatusCode == 200)
+                _logger.Info("Notifica RIUSCITA all'EP SetMSTServicePolling, request: " + "\n" + JsonSerializer.Serialize(reqContent), _sessione.IdServizio, 
+                    ETipoLog.Info.ToString(), "SendPollingToMonitoringService");
+            else
+                _logger.Info("Notifica FALLITA all'EP SetMSTServicePolling per il seguente motivo: " + "\n" + result.ReasonPhrase + "\n" 
+                    + "Request: " + JsonSerializer.Serialize(reqContent), _sessione.IdServizio, ETipoLog.Info.ToString(), "SendPollingToMonitoringService");
+
         }
         private bool ControllaSeQuadrare (string parGiorni, DateOnly lastDateExec, DateOnly dataInizio, string timeZone)
         {
@@ -123,23 +150,30 @@ namespace GestioneNotifiche
         }
         private void Initialize()
         {
-            _dbContext = new BdmonitorContextRepository(_config.ConnectionString);
+            _dbContext = new BdmonitorContext(_config.ConnectionString);
             _assembly = Assembly.GetExecutingAssembly();
             _sessione = new SessioneRepository(_assembly, _config, _dbContext).Get();
             _logger = new LoggerFile(_sessione);
             _emailSender = new EmailSender(_config.MailConfig);
-            var res = _dbContext.ClearDbTable(_config.EsecuzioneServizioDaysBackup);
-            _logger.Info(res);
-            //TODO scrivere sull'EP del servizio di monitoraggio l'identificativo e l'hostname del servizio
+            //qui metterò l'inizializzazione di tutti i repository
+            _bdmAttivitaRepo = new BdmAttivitaRepository(_dbContext);
+            _bdmEsecuzioneServiziStudiRepo = new BdmEsecuzioneServiziStudiRepository(_dbContext);
+            _studiParametriRepo = new StudiParametriRepository(_dbContext);
+            _idService = _sessione.IdServizio;
+
+            var res = _bdmEsecuzioneServiziStudiRepo.ClearDbTable(_config.EsecuzioneServizioDaysBackup);
+            _logger.Info(res, _idService, ETipoLog.Info.ToString(), "Initialize");
         }
         private void GeneraNotificaQuadratureOre(int idStudio, DateOnly dataDa, string timeZone)
         {
-            var oreAttivitaUtenti = _dbContext.GetOreAttivitaUtentiStudio(idStudio, dataDa);
+            var oreAttivitaUtenti = _bdmAttivitaRepo.GetOreAttivitaUtentiStudio(idStudio, dataDa);
             var liUtenti = oreAttivitaUtenti.GroupBy(x => x.Utente);
             var idEsecServiziStudi = InsertEsecuzioneServiziStudi(liUtenti.Count(), idStudio);
             var liMailNotifiche = new List<MailNotifica>();
 
-            _logger.Info("Utenti da controllare " + liUtenti.Count());
+            _logger.Info("Utenti da controllare " + liUtenti.Count(), _idService, ETipoLog.Info.ToString(), "GeneraNotificaQuadratureOre");
+
+            SendPollingToMonitoringService(ETipoMetodoNotificaQuadratureOre.QuadraturaOre, ETipoLog.Info, "GeneraNotificaQuadratureOre per lo studio: " + idStudio);
 
             foreach (var ut in liUtenti)
             {
@@ -151,20 +185,19 @@ namespace GestioneNotifiche
                     //TODO riabilitarlo prima della release
                     //liMailNotifiche.Add(new MailNotifica(utente.Utente, dataDa));
                     liMailNotifiche.Add(new MailNotifica("luca.veneziani@mastersoftsrl.it", dataDa, timeZone));
-                    _logger.Info("L'utente " + utente.Utente + " NON ha giornate da quadrare!");
+                    _logger.Info("L'utente " + utente.Utente + " NON ha giornate da quadrare!", _idService, ETipoLog.Info.ToString(), "GeneraNotificaQuadratureOre");
                 }
                 else
                 {
                     liMailNotifiche.Add(new MailNotifica(liUtenteGiorniDaQuadrare, dataDa, timeZone));
                     foreach (var giornata in liUtenteGiorniDaQuadrare)
                         _logger.Info("L'utente: " + utente.Utente + " deve quadrare il giorno: " + giornata.Data_Inizio + 
-                                " minuti da lavorare: " + giornata.MinutiDaLavorare + " e ne ha lavorati: " + giornata.MinutiLavorati);
+                                " minuti da lavorare: " + giornata.MinutiDaLavorare + " e ne ha lavorati: " + giornata.MinutiLavorati, _idService, ETipoLog.Info.ToString(), "GeneraNotificaQuadratureOre");
                 }
             }
             var liMailNotificheNonRiuscite = SendMails(liMailNotifiche, idEsecServiziStudi);
-            _logger.Info("Numero di mail non notificate: " + liMailNotificheNonRiuscite.Count());
-            _logger.Info("Fine polling servizio");
-            //TODO se liMailNotificheNonRiuscite.Count() > 0 allora mando una mail dal servizio di monitoraggio
+            _logger.Info("Numero di mail non notificate: " + liMailNotificheNonRiuscite.Count(), _idService, ETipoLog.Info.ToString(), "GeneraNotificaQuadratureOre");
+            _logger.Info("Fine polling servizio", _idService, ETipoLog.Info.ToString(), "GeneraNotificaQuadratureOre");
         }
         private int InsertEsecuzioneServiziStudi(int numUtenti, int idStudio)
         {
@@ -172,11 +205,11 @@ namespace GestioneNotifiche
 
             if (numUtenti > 0)
             {
-                var esecServiziStudi = new BdmEsecuzioneServiziStudi() { IdServizio = _sessione.IdServizio, IdStudio = idStudio, DataExec = DateOnly.FromDateTime(DateTime.UtcNow) };
+                var esecServiziStudi = new BdmEsecuzioneServiziStudi() { IdServizio = _sessione.IdServizio, IdStudio = idStudio, DataExec = DateOnly.FromDateTime(DateTime.UtcNow)};
                 _dbContext.BdmEsecuzioneServiziStudis.Add(esecServiziStudi);
                 _dbContext.SaveChanges();
                 idEsecuzione = esecServiziStudi.IdEsecuzione;
-                _logger.Info("Inserito record nella tabella BDM_EsecuzioneServiziStudi - " + JsonSerializer.Serialize(esecServiziStudi));
+                _logger.Info("Inserito record nella tabella BDM_EsecuzioneServiziStudi - " + JsonSerializer.Serialize(esecServiziStudi), _idService, ETipoLog.Info.ToString(), "InsertEsecuzioneServiziStudi");
             }
 
             return idEsecuzione;
@@ -193,12 +226,13 @@ namespace GestioneNotifiche
                 if (!string.IsNullOrEmpty(result))
                 {
                     liMailNotificheNonRisucite.Add(mail);
-                    _logger.Info("Invio mail all'utente " + mail.To.First() + " FALLITO");
+                    _logger.Info("Invio mail all'utente " + mail.To.First() + " FALLITO", _idService, ETipoLog.Info.ToString(), "SendMails");
+                    SendPollingToMonitoringService(ETipoMetodoNotificaQuadratureOre.SendMail, ETipoLog.Exception, "SendMail fallita per l'utente: " + mail.To.First() + " - CAUSA: " + result);
                 }
                 else
                 {
                     mailSent = true;
-                    _logger.Info("Invio mail all'utente " + mail.To.First() + " RIUSCITO");
+                    _logger.Info("Invio mail all'utente " + mail.To.First() + " RIUSCITO", _idService, ETipoLog.Info.ToString(), "SendMails");
                 }
                 InsertEsecuzioneServiziStudiDettagli(idEsecuzione, mail.To.First().Address, mailSent);
             }
@@ -210,7 +244,7 @@ namespace GestioneNotifiche
             var eseServiziStudiDett = new BdmEsecuzioneServiziStudiDettagli() { IdEsecuzione = idEsecuzione, Utente = username, MailSent = mailSent };
             _dbContext.BdmEsecuzioneServiziStudiDettaglis.Add(eseServiziStudiDett);
             _dbContext.SaveChanges();
-            _logger.Info("Inserito record nella tabella BDM_EsecuzioneServiziStudiDettagli - " + JsonSerializer.Serialize(eseServiziStudiDett));
+            _logger.Info("Inserito record nella tabella BDM_EsecuzioneServiziStudiDettagli - " + JsonSerializer.Serialize(eseServiziStudiDett), _idService, ETipoLog.Info.ToString(), "InsertEsecuzioneServiziStudiDettagli");
         }
     }
 }

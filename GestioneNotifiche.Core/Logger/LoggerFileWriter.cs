@@ -1,4 +1,7 @@
-﻿using GestioneNotifiche.Core.Sessione;
+﻿using GestioneNotifiche.Core.Database;
+using GestioneNotifiche.Core.Sessione;
+using MasterSoft.Core.Logger;
+using MasterSoft.Core.Sessione;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,13 +21,13 @@ namespace GestioneNotifiche.Core.Logger
             m_sessione = sessione;
         }
 
-        public void Write(string message)
+        public void Write(string message, int idService, string type, string method)
         {
             lock (Locker)
             {
                 CreateDirectoryIfNeed();
                 DeleteOld();
-                WriteToFile(message);
+                WriteToFile(string.Format("SERVICE {0} - TYPE {1} - METHOD {2} - {3}", idService, type, method, message));
             }
         }
 

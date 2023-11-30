@@ -1,6 +1,6 @@
+using GestioneNotificaQuadratureOra.Config;
 using GestioneNotifiche;
 using GestioneNotifiche.Core.Mail;
-using PublishPrices.Config;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddHostedService<NotificaQuadratureOreService>();

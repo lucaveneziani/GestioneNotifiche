@@ -1,4 +1,5 @@
 ﻿using MailKit.Net.Smtp;
+using MasterSoft.Core.Mail;
 using MimeKit;
 using System;
 using System.Collections.Generic;
@@ -15,12 +16,12 @@ namespace GestioneNotifiche.Core.Mail
         {
             _emailConfig = emailConfig;
         }
-        public string SendEmail(MailNotifica message)
+        public string SendEmail(IEmailNotifica message)
         {
             var emailMessage = CreateEmailMessage(message);
             return Send(emailMessage);
         }
-        private MimeMessage CreateEmailMessage(MailNotifica message)
+        private MimeMessage CreateEmailMessage(IEmailNotifica message)
         {
             var emailMessage = new MimeMessage();
             emailMessage.From.Add(new MailboxAddress("assistenza@pitousrl.it", _emailConfig.From));
