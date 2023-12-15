@@ -26,20 +26,22 @@ namespace GestioneNotifiche.Core.Mail
 
             foreach (var giornata in liUtenteGiorniDaNotificare)
             {
-                var oreDaLavorate = giornata.MinutiDaLavorare / 60;
+                var oreDaLavorate = Math.Round(Convert.ToDouble(giornata.MinutiDaLavorare) / 60, 2);
                 var oreDaQuadrare = Math.Round((Convert.ToDouble(giornata.MinutiDaLavorare) - Convert.ToDouble(giornata.MinutiLavorati)) / 60,2);
                 mailBody += "In data " + giornata.DataAttivita + " ci sono da quadrare " + oreDaQuadrare + " ore sul totale delle ore lavorate " + oreDaLavorate + " \t\n ";
             }
+#if DEBUG
+            To.Add(new MailboxAddress("luca.veneziani@mastersoftsrl.it", "luca.veneziani@mastersoftsrl.it"));
+#else
+            To.Add(new MailboxAddress(liUtenteGiorniDaNotificare.First().Utente, liUtenteGiorniDaNotificare.First().Utente));
+#endif
 
-            //TODO riabilitarlo prima della release
-            //To.Add(new MailboxAddress("assistenza@pitousrl.it", liUtenteGiorniDaNotificare.First().Utente));
-            To.Add(new MailboxAddress("smtp_pitou@fastera.systems", "luca.veneziani@mastersoftsrl.it"));
             Subject = GetSubject(dataDa, timeZone);
             Content = mailBody;
         }
         public MailNotifica(string mailAddress, DateOnly dataDa, string timeZone)
         {
-            To.Add(new MailboxAddress("smtp_pitou@fastera.systems", mailAddress));
+            To.Add(new MailboxAddress(mailAddress, mailAddress));
             Subject = GetSubject(dataDa, timeZone);
             Content = "Ottimo lavoro, tutte le ore inserite risultano quadrate correttamente!";
         }

@@ -2,7 +2,12 @@ using GestioneNotificaQuadratureOra.Config;
 using GestioneNotifiche;
 using GestioneNotifiche.Core.Mail;
 
+
 var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddWindowsService(options =>
+{
+    options.ServiceName = "Gestione Notifiche Ore";
+});
 builder.Services.AddHostedService<NotificaQuadratureOreService>();
 
 var options = new ConfigurationOption();

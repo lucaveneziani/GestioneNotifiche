@@ -3,6 +3,8 @@ using MasterSoft.Core.EndPoint.SetMstServicePolling;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http.Headers;
+using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,14 +19,13 @@ namespace GestioneNotifiche.Core.Endpoint
         {
             _url = url;
         }
-        public async Task<HttpResponseMessage> Call(string endPoint, SetMSTServicePollingRequest reqBody)
+        public async Task<HttpResponseMessage> CallMstServicePollingRequest(SetMSTServicePollingRequest reqBody)
         {
             var response = new HttpResponseMessage() { StatusCode = System.Net.HttpStatusCode.BadRequest};
             var client = new HttpClient();
-
             try
             {
-                response = await client.PutAsJsonAsync(_url + endPoint, reqBody);
+                response = await client.PutAsJsonAsync(_url + "Analyzer/SetMSTServicePolling", reqBody);
             }
             catch (Exception ex) 
             {

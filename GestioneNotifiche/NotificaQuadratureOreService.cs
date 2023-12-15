@@ -20,6 +20,10 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using GestioneNotifiche.Core.Endpoint;
 using MasterSoft.Core.Endpoint.SetMstServicePolling;
+using System.Text;
+using static System.Net.Mime.MediaTypeNames;
+using System.Web;
+using Microsoft.IdentityModel.Tokens;
 
 namespace GestioneNotifiche
 {
@@ -96,7 +100,7 @@ namespace GestioneNotifiche
         private async void SendPollingToMonitoringService(ETipoMetodoNotificaQuadratureOre metodo, ETipoLog tipo, string messaggio)
         {
             var reqContent = new SetMSTServicePollingRequest() { Metodo = metodo, GuidServizio = _sessione.GuidServizio, Tipo = Convert.ToInt32(tipo), Messaggio = messaggio};
-            var result = await new ApiCall(_config.MonitoringServiceUrl).Call("SetMSTServicePolling", reqContent);
+            var result = await new ApiCall(_config.MonitoringServiceUrl).CallMstServicePollingRequest(reqContent);
 
             if ((int)result.StatusCode == 200)
                 _logger.Info("Notifica RIUSCITA all'EP SetMSTServicePolling, request: " + "\n" + JsonSerializer.Serialize(reqContent), _sessione.IdServizio, 
@@ -169,7 +173,7 @@ namespace GestioneNotifiche
             var dataA = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow.AddDays(-1), TimeZoneInfo.FindSystemTimeZoneById(timeZone)));
             var oreAttivitaUtenti = _bdmAttivitaRepo.GetOreAttivitaUtentiStudio(idStudio, dataDa, dataA);
             var liUtenti = oreAttivitaUtenti.GroupBy(x => x.Utente);
-            var idEsecServiziStudi = InsertEsecuzioneServiziStudi(liUtenti.Count(), idStudio);
+            var idEsecServiziStudi = InsertEsecuzioneServiziStudi(liUtenti.Count(), idStudio, timeZone);
             var liMailNotifiche = new List<MailNotifica>();
 
             _logger.Info("Utenti da controllare " + liUtenti.Count(), _idService, ETipoLog.Info.ToString(), "GeneraNotificaQuadratureOre");
@@ -183,9 +187,11 @@ namespace GestioneNotifiche
 
                 if (liUtenteGiorniDaQuadrare.Count() == 0)
                 {
-                    //TODO riabilitarlo prima della release
-                    //liMailNotifiche.Add(new MailNotifica(utente.Utente, dataDa));
+#if DEBUG
                     liMailNotifiche.Add(new MailNotifica("luca.veneziani@mastersoftsrl.it", dataDa, timeZone));
+#else
+                    liMailNotifiche.Add(new MailNotifica(utente.Utente, dataDa, timeZone));
+#endif
                     _logger.Info("L'utente " + utente.Utente + " NON ha giornate da quadrare!", _idService, ETipoLog.Info.ToString(), "GeneraNotificaQuadratureOre");
                 }
                 else
@@ -200,13 +206,18 @@ namespace GestioneNotifiche
             _logger.Info("Numero di mail non notificate: " + liMailNotificheNonRiuscite.Count(), _idService, ETipoLog.Info.ToString(), "GeneraNotificaQuadratureOre");
             _logger.Info("Fine polling servizio", _idService, ETipoLog.Info.ToString(), "GeneraNotificaQuadratureOre");
         }
-        private int InsertEsecuzioneServiziStudi(int numUtenti, int idStudio)
+        private int InsertEsecuzioneServiziStudi(int numUtenti, int idStudio, string timeZone)
         {
             int idEsecuzione = 0;
 
             if (numUtenti > 0)
             {
-                var esecServiziStudi = new BdmEsecuzioneServiziStudi() { IdServizio = _sessione.IdServizio, IdStudio = idStudio, DataExec = DateOnly.FromDateTime(DateTime.UtcNow)};
+                var esecServiziStudi = new BdmEsecuzioneServiziStudi()
+                {
+                    IdServizio = _sessione.IdServizio,
+                    IdStudio = idStudio,
+                    DataExec = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById(timeZone)))
+                };
                 _dbContext.BdmEsecuzioneServiziStudis.Add(esecServiziStudi);
                 _dbContext.SaveChanges();
                 idEsecuzione = esecServiziStudi.IdEsecuzione;

@@ -37,7 +37,11 @@ namespace GestioneNotifiche.Core.Mail
                 var result = "";
                 try
                 {
+#if DEBUG
+                    client.Connect(_emailConfig.SmtpServer, _emailConfig.Port, true);
+#else
                     client.Connect(_emailConfig.SmtpServer, _emailConfig.Port, false);
+#endif
                     client.AuthenticationMechanisms.Remove("XOAUTH2");
                     client.Authenticate(_emailConfig.MailUserName, _emailConfig.MailPassword);
                     client.Send(mailMessage);

@@ -9,6 +9,6 @@ namespace GestioneNotifiche.Core.Endpoint
 {
     public interface IApiCall
     {
-        Task<HttpResponseMessage> Call(string endPoint, SetMSTServicePollingRequest reqBody);
+        Task<HttpResponseMessage> CallMstServicePollingRequest(SetMSTServicePollingRequest reqBody);
     }
 }
