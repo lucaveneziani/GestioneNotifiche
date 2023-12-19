@@ -183,7 +183,7 @@ namespace GestioneNotifiche
             foreach (var ut in liUtenti)
             {
                 var utente = ut.First();
-                var liUtenteGiorniDaQuadrare = oreAttivitaUtenti.Where(x => x.Utente == utente.Utente && x.MinutiDaLavorare != x.MinutiLavorati);
+                var liUtenteGiorniDaQuadrare = oreAttivitaUtenti.Where(x => x.Utente == utente.Utente && x.MinutiLavorati < x.MinutiDaLavorare);
 
                 if (liUtenteGiorniDaQuadrare.Count() == 0)
                 {
