@@ -3,9 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34316.72
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GestioneNotificheQuadratureOre", "GestioneNotificheQuadratureOre.csproj", "{22549307-2A83-4485-ADE2-313EE9FC9982}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GestioneNotificheQuadratureOre", "GestioneNotificheQuadratureOre.csproj", "{22549307-2A83-4485-ADE2-313EE9FC9982}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GestioneNotifiche.Core", "..\GestioneNotifiche.Core\GestioneNotifiche.Core.csproj", "{3B37D71A-6E1B-4897-918C-2C49F2AED25E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GestioneNotifiche.Core", "..\GestioneNotifiche.Core\GestioneNotifiche.Core.csproj", "{3B37D71A-6E1B-4897-918C-2C49F2AED25E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ReleaseNotes", "ReleaseNotes", "{5E1D2F5A-CE5E-497D-B8BE-4B9B6159FCDA}"
+	ProjectSection(SolutionItems) = preProject
+		..\ReleaseNotes\Release Notes.docx = ..\ReleaseNotes\Release Notes.docx
+		..\ReleaseNotes\ReleaseNotes.pdf = ..\ReleaseNotes\ReleaseNotes.pdf
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,11 +1,6 @@
 ﻿using GestioneNotifiche.Core.Database.Model;
 using MasterSoft.Core.Mail;
 using MimeKit;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GestioneNotifiche.Core.Mail
 {
@@ -44,6 +39,12 @@ namespace GestioneNotifiche.Core.Mail
             To.Add(new MailboxAddress(mailAddress, mailAddress));
             Subject = GetSubject(dataDa, timeZone);
             Content = "Ottimo lavoro, tutte le ore inserite risultano quadrate correttamente!";
+        }
+        public MailNotifica(ImpegniReminder reminder)
+        {
+            To.Add(new MailboxAddress(reminder.Email_Registrazione, reminder.Email_Registrazione));
+            Subject = reminder.Titolo + " - inizio alle: " + reminder.Data_Ora_Inizio;
+            Content = "La presente mail solo per ricordarle del suo impegno: " + reminder.Titolo + " alle ore: " + reminder.Data_Ora_Inizio;
         }
         private string GetSubject(DateOnly dataDa, string timeZone)
         {

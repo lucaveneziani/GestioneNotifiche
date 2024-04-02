@@ -1,14 +1,11 @@
-﻿using MasterSoft.Core.EndPoint.SetMstServicePolling;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using MasterSoft.Core.EndPoint.SendImpegniNotification;
+using MasterSoft.Core.EndPoint.SetMstServicePolling;
 
 namespace GestioneNotifiche.Core.Endpoint
 {
     public interface IApiCall
     {
         Task<HttpResponseMessage> CallMstServicePollingRequest(SetMSTServicePollingRequest reqBody);
+        Task<HttpResponseMessage> CallSendImpegniNotification(SendImpegniNotificationRequest reqBody);
     }
 }

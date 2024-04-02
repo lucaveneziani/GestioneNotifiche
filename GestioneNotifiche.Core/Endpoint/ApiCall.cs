@@ -1,14 +1,6 @@
-﻿using Azure.Core;
+﻿using MasterSoft.Core.EndPoint.SendImpegniNotification;
 using MasterSoft.Core.EndPoint.SetMstServicePolling;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Net.Http;
 using System.Net.Http.Json;
-using System.Text;
-using System.Threading.Tasks;
-using static Org.BouncyCastle.Math.EC.ECCurve;
 
 namespace GestioneNotifiche.Core.Endpoint
 {
@@ -25,11 +17,29 @@ namespace GestioneNotifiche.Core.Endpoint
             var client = new HttpClient();
             try
             {
-                response = await client.PutAsJsonAsync(_url + "Analyzer/SetMSTServicePolling", reqBody);
+                response = await client.PutAsJsonAsync(_url + "/Analyzer/SetMSTServicePolling", reqBody);
             }
             catch (Exception ex) 
             {
                 response.ReasonPhrase = ex.Message; 
+            }
+            finally
+            {
+                client.Dispose();
+            }
+            return Task.FromResult(response).Result;
+        }
+        public async Task<HttpResponseMessage> CallSendImpegniNotification(SendImpegniNotificationRequest reqBody)
+        {
+            var response = new HttpResponseMessage() { StatusCode = System.Net.HttpStatusCode.BadRequest };
+            var client = new HttpClient();
+            try
+            {
+                response = await client.PutAsJsonAsync(_url + "/Notification/SendImpegniNotification", reqBody);
+            }
+            catch (Exception ex) 
+            {
+                response.ReasonPhrase = ex.Message;
             }
             finally
             {

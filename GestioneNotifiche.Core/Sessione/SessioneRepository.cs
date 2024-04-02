@@ -1,16 +1,8 @@
 ﻿using GestioneNotifiche.Core.Database;
 using MasterSoft.Core.Config;
 using MasterSoft.Core.Sessione;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.SqlClient;
-using System.IO;
-using System.Linq;
 using System.Net;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GestioneNotifiche.Core.Sessione
 {
@@ -19,6 +11,7 @@ namespace GestioneNotifiche.Core.Sessione
         private readonly Assembly m_assembly;
         private readonly IConfigurazioneModel m_configurazione;
         private readonly BdmonitorContext m_dbContext;
+        private readonly string m_serviceDescription;
         private static bool IsDebug
         {
             get
@@ -31,11 +24,12 @@ namespace GestioneNotifiche.Core.Sessione
             }
         }
 
-        public SessioneRepository(Assembly assembly, IConfigurazioneModel configurazione, BdmonitorContext dbContext)
+        public SessioneRepository(Assembly assembly, IConfigurazioneModel configurazione, BdmonitorContext dbContext, string serviceDescription)
         {
             m_assembly = assembly;
             m_configurazione = configurazione;
             m_dbContext = dbContext;
+            m_serviceDescription = serviceDescription;
         }
 
         public ISessioneModel Get()
@@ -59,12 +53,12 @@ namespace GestioneNotifiche.Core.Sessione
 
         private string GetGuidService()
         {
-            return m_dbContext.BdmServizis.First(x => x.Descrizione == "Notifica Quadrature Ore").GuidServizio;
+            return m_dbContext.BdmServizis.First(x => x.Descrizione == m_serviceDescription).GuidServizio;
         }
 
         private int GetIdService()
         {
-            return m_dbContext.BdmServizis.First(x => x.Descrizione == "Notifica Quadrature Ore").IdServizio;
+            return m_dbContext.BdmServizis.First(x => x.Descrizione == m_serviceDescription).IdServizio;
         }
 
         private string GetHostnameService()

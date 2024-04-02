@@ -1,10 +1,6 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using GestioneNotifiche.Core.Database.Model;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GestioneNotifiche.Core.Database.Repository
 {
@@ -14,6 +10,25 @@ namespace GestioneNotifiche.Core.Database.Repository
         public BdmEsecuzioneServiziStudiRepository(BdmonitorContext dbContext)
         {
             _dbContext = dbContext;
+        }
+        public int InsertEsecuzioneServiziStudi(int numUtenti, int idStudio, string timeZone, int idServizio)
+        {
+            int idEsecuzione = 0;
+
+            if (numUtenti > 0)
+            {
+                var esecServiziStudi = new BdmEsecuzioneServiziStudi()
+                {
+                    IdServizio = idServizio,
+                    IdStudio = idStudio,
+                    DataExec = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById(timeZone)))
+                };
+                _dbContext.BdmEsecuzioneServiziStudis.Add(esecServiziStudi);
+                _dbContext.SaveChanges();
+                idEsecuzione = esecServiziStudi.IdEsecuzione;
+            }
+
+            return idEsecuzione;
         }
         public string ClearDbTable(int giorniBackup)
         {

@@ -1,13 +1,5 @@
-﻿using GestioneNotifiche.Core.Database;
-using GestioneNotifiche.Core.Sessione;
-using MasterSoft.Core.Logger;
+﻿using MasterSoft.Core.Logger;
 using MasterSoft.Core.Sessione;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GestioneNotifiche.Core.Logger
 {

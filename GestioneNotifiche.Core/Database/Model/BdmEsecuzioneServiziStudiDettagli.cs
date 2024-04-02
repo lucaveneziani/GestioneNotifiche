@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace GestioneNotifiche.Core.Database.Model;
+﻿namespace GestioneNotifiche.Core.Database.Model;
 
 public partial class BdmEsecuzioneServiziStudiDettagli
 {

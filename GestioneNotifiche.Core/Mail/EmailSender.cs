@@ -1,11 +1,6 @@
 ﻿using MailKit.Net.Smtp;
 using MasterSoft.Core.Mail;
 using MimeKit;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GestioneNotifiche.Core.Mail
 {
