@@ -84,7 +84,7 @@ namespace GestioneNotificheQuadratureOre.Serivces
                 finally
                 {
                     await Task.Delay(_config.ServicePollingMinutes * 60000, stoppingToken);
-                    //await Task.Delay(_config.ServicePollingMinutes * 100, stoppingToken);
+                    //await Task.Delay(_config.ServicePollingMinutes * 100, stoppingToken); //da commentare
                 }
             }
         }       

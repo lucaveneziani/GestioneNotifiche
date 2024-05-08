@@ -117,27 +117,25 @@ namespace GestioneNotificheQuadratureOre.Serivces
             var result = new ApiCall(_config.MonitoringServiceUrl).CallSendImpegniNotification(reqBody);
 
             if ((int)result.Result.StatusCode == 200)
-            {
                 _logger.Info("Notifica RIUSCITA all'EP SendImpegniNotification, request: " + "\n" + JsonSerializer.Serialize(reqBody), _sessione.IdServizio,
                     ETipoLog.Info.ToString(), "SendReminderToService");
-
-                var exeReminderImpDett = new BdmEsecuzioneReminderImpegniDettagli() 
-                    { IdEsecuzione = execReminderImp.IdEsecuzione, IdImpegno = reminder.IdImpegno, IdUtente = reminder.IdUtenti, ContReminder = reminder.ContReminder + 1 };
-                _esecuzioneReminderImpegniDettRepo.Add(exeReminderImpDett);
-
-                _logger.Info("Inserito un nuovo dettaglio dell'impegno " + "\n" + JsonSerializer.Serialize(exeReminderImpDett) , _idService, ETipoLog.Info.ToString(), "SendReminderToService");
-
-                _sendMstServicePolling.SendReminderImpegniPollingToMonitoringService(_sessione, _config.MonitoringServiceUrl, _logger, EtipoMetodoReminderImpegni.ReminderImpegni, ETipoLog.Info, "Manda la notifica per l'impegno: " + reminder.IdImpegno + " all'utente: " + reminder.IdUtenti);
-
-                var mail = new MailNotifica(reminder);
-                liMailNotifiche.Add(mail);
-            }
             else if ((int)result.Result.StatusCode == 204)
                 _logger.Info("Notifica RIUSCita all'EP SendImpegniNotification, ma ConnectionId non trovato" + "Request: " + JsonSerializer.Serialize(reqBody),
                     _sessione.IdServizio, ETipoLog.Info.ToString(), "SendReminderToService");
             else
                 _logger.Info("Notifica FALLITA all'EP SendImpegniNotification per il seguente motivo: " + "\n" + result.Result.ReasonPhrase + "\n"
                    + "Request: " + JsonSerializer.Serialize(reqBody), _sessione.IdServizio, ETipoLog.Info.ToString(), "SendReminderToService");
+
+            var exeReminderImpDett = new BdmEsecuzioneReminderImpegniDettagli()
+            { IdEsecuzione = execReminderImp.IdEsecuzione, IdImpegno = reminder.IdImpegno, IdUtente = reminder.IdUtenti, ContReminder = reminder.ContReminder + 1 };
+            _esecuzioneReminderImpegniDettRepo.Add(exeReminderImpDett);
+
+            _logger.Info("Inserito un nuovo dettaglio dell'impegno " + "\n" + JsonSerializer.Serialize(exeReminderImpDett), _idService, ETipoLog.Info.ToString(), "SendReminderToService");
+
+            _sendMstServicePolling.SendReminderImpegniPollingToMonitoringService(_sessione, _config.MonitoringServiceUrl, _logger, EtipoMetodoReminderImpegni.ReminderImpegni, ETipoLog.Info, "Manda la notifica per l'impegno: " + reminder.IdImpegno + " all'utente: " + reminder.IdUtenti);
+
+            var mail = new MailNotifica(reminder);
+            liMailNotifiche.Add(mail);
         }
         private List<MailNotifica> SendMails(List<MailNotifica> liMailNotifiche)
         {
