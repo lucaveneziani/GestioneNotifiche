@@ -68,8 +68,10 @@ namespace GestioneNotificheQuadratureOre.Serivces
                         if (ControllaSeQuadrare(parGiorni, lastDateExec, dataInizio, timeZone))
                         {
                             var dataDaQuadratura = dataInizio > lastDateExec ? dataInizio : lastDateExec;
-                            _logger.Info("Inizio qaduratura per lo studio con id: " + studio.First().IdStudio + " dalla data: " + dataDaQuadratura, _idService, ETipoLog.Info.ToString(), "ExecuteAsync");
-                            GeneraNotificaQuadratureOre(studio.First().IdStudio, dataDaQuadratura, timeZone);
+                            var dataA = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow.AddDays(-1), TimeZoneInfo.FindSystemTimeZoneById(timeZone)));
+                            _logger.Info("Inizio qaduratura per lo studio con id: " + studio.First().IdStudio + " dalla data: " + dataDaQuadratura + " alla data: " + dataA, _idService, ETipoLog.Info.ToString(), "ExecuteAsync");
+                            
+                            GeneraNotificaQuadratureOre(studio.First().IdStudio, dataDaQuadratura, dataA, timeZone);
                         }
                         else
                             _logger.Info("Nessuna quadratura da eseguire in base alle tempistiche impostate", _idService, ETipoLog.Info.ToString(), "ExecuteAsync");
@@ -147,9 +149,9 @@ namespace GestioneNotificheQuadratureOre.Serivces
             var res = _bdmEsecuzioneServiziStudiRepo.ClearDbTable(_config.EsecuzioneServizioDaysBackup);
             _logger.Info(res, _idService, ETipoLog.Info.ToString(), "Initialize");
         }
-        private void GeneraNotificaQuadratureOre(int idStudio, DateOnly dataDa, string timeZone)
+        private void GeneraNotificaQuadratureOre(int idStudio, DateOnly dataDa, DateOnly dataA, string timeZone)
         {
-            var dataA = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow.AddDays(-1), TimeZoneInfo.FindSystemTimeZoneById(timeZone)));
+            //var dataA = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow.AddDays(-1), TimeZoneInfo.FindSystemTimeZoneById(timeZone)));
             var oreAttivitaUtenti = _bdmAttivitaRepo.GetOreAttivitaUtentiStudio(idStudio, dataDa, dataA);
             var liUtenti = oreAttivitaUtenti.GroupBy(x => x.Utente);
             var idEsecServiziStudi = _bdmEsecuzioneServiziStudiRepo.InsertEsecuzioneServiziStudi(liUtenti.Count(), idStudio, timeZone, _sessione.IdServizio);

@@ -30,7 +30,7 @@ public partial class BdmonitorContext : DbContext
     public virtual DbSet<BdmEsecuzioneReminderImpegniDettagli> BdmEsecuzioneReminderImpegniDettaglis { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseSqlServer(_connString);
+        => optionsBuilder.UseSqlServer(_connString, options => options.CommandTimeout(180));
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
