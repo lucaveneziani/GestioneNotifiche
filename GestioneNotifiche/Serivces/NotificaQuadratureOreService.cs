@@ -58,6 +58,11 @@ namespace GestioneNotificheQuadratureOre.Serivces
 
                     foreach (var studio in liStudi)
                     {
+#if DEBUG
+                        if (studio.First().IdStudio != 67)
+                            continue;
+#endif
+
                         var lastDateExec = studio.First().DataExec;
                         var parGiorni = studio.First(x => x.Descrizione == "Invia notifica quadratura ore ogni tot giorni").Valore;
                         var dataInizio = DateOnly.FromDateTime(Convert.ToDateTime(studio.First(x => x.Descrizione == "Data inizio del servizio").Valore).Date);
@@ -65,10 +70,13 @@ namespace GestioneNotificheQuadratureOre.Serivces
 
                         _logger.Info(JsonSerializer.Serialize(studio), _idService, ETipoLog.Info.ToString(), "ExecuteAsync");
 
+#if DEBUG
+                        lastDateExec = new DateOnly(2025, 01, 29);
+#endif
                         if (ControllaSeQuadrare(parGiorni, lastDateExec, dataInizio, timeZone))
                         {
                             var dataDaQuadratura = dataInizio > lastDateExec ? dataInizio : lastDateExec;
-                            var dataA = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow.AddDays(-1), TimeZoneInfo.FindSystemTimeZoneById(timeZone)));
+                            var dataA = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById(timeZone)));
                             _logger.Info("Inizio qaduratura per lo studio con id: " + studio.First().IdStudio + " dalla data: " + dataDaQuadratura + " alla data: " + dataA, _idService, ETipoLog.Info.ToString(), "ExecuteAsync");
                             
                             GeneraNotificaQuadratureOre(studio.First().IdStudio, dataDaQuadratura, dataA, timeZone);
@@ -99,7 +107,7 @@ namespace GestioneNotificheQuadratureOre.Serivces
 
             if (int.TryParse(parGiorni, out var numGiorniAttesa))
             {
-                if (lastDateExec.AddDays(numGiorniAttesa) <= dateNow)
+                if (lastDateExec.AddDays(numGiorniAttesa) < dateNow)
                     return true;
                 else return false;
             }
