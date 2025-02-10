@@ -107,7 +107,7 @@ namespace GestioneNotificheQuadratureOre.Serivces
 
             if (int.TryParse(parGiorni, out var numGiorniAttesa))
             {
-                if (lastDateExec.AddDays(numGiorniAttesa) < dateNow)
+                if (lastDateExec.AddDays(numGiorniAttesa) <= dateNow)
                     return true;
                 else return false;
             }
