@@ -10,6 +10,7 @@ using MasterSoft.Core.Endpoint.SetMstServicePolling;
 using MasterSoft.Core.Logger;
 using MasterSoft.Core.Mail;
 using MasterSoft.Core.Sessione;
+using System.Data;
 using System.Reflection;
 using System.Text.Json;
 
@@ -59,7 +60,7 @@ namespace GestioneNotificheQuadratureOre.Serivces
                     foreach (var studio in liStudi)
                     {
 #if DEBUG
-                        if (studio.First().IdStudio != 67)
+                        if (studio.First().IdStudio != 78)
                             continue;
 #endif
 
@@ -71,12 +72,15 @@ namespace GestioneNotificheQuadratureOre.Serivces
                         _logger.Info(JsonSerializer.Serialize(studio), _idService, ETipoLog.Info.ToString(), "ExecuteAsync");
 
 #if DEBUG
-                        lastDateExec = new DateOnly(2025, 01, 29);
+                        lastDateExec = new DateOnly(2025, 01, 31);
 #endif
                         if (ControllaSeQuadrare(parGiorni, lastDateExec, dataInizio, timeZone))
                         {
                             var dataDaQuadratura = dataInizio > lastDateExec ? dataInizio : lastDateExec;
                             var dataA = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById(timeZone)));
+#if DEBUG
+                            dataA = new DateOnly(2025, 02, 07);
+#endif
                             _logger.Info("Inizio qaduratura per lo studio con id: " + studio.First().IdStudio + " dalla data: " + dataDaQuadratura + " alla data: " + dataA, _idService, ETipoLog.Info.ToString(), "ExecuteAsync");
                             
                             GeneraNotificaQuadratureOre(studio.First().IdStudio, dataDaQuadratura, dataA, timeZone);
@@ -101,7 +105,9 @@ namespace GestioneNotificheQuadratureOre.Serivces
         private bool ControllaSeQuadrare(string parGiorni, DateOnly lastDateExec, DateOnly dataInizio, string timeZone)
         {
             var dateNow = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById(timeZone)));
-
+#if DEBUG
+                        dateNow = new DateOnly(2025, 02, 07);
+#endif
             if (dataInizio >= dateNow)
                 return false;
 
