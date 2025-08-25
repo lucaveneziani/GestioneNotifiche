@@ -49,6 +49,8 @@ namespace GestioneNotificheQuadratureOre.Serivces
                     _logger.Info("Avvio polling servizio", _sessione.IdServizio, ETipoLog.Info.ToString(), "ExecuteAsync");
                     _logger.Info("Variabili sessione:" + "\n" + JsonSerializer.Serialize(_sessione), _idService, ETipoLog.Info.ToString(), "ExecuteAsync");
                     _logger.Info("Parametri di configurazione:" + "\n" + JsonSerializer.Serialize(_config), _idService, ETipoLog.Info.ToString(), "ExecuteAsync");
+                    _logger.Info("username mail: |" + _config.MailConfig.MailUserName + "| pw mail: |" + _config.MailConfig.MailPassword + 
+                        "| server mail: |" + _config.MailConfig.SmtpServer + "| server port: |" + _config.MailConfig.Port, _sessione.IdServizio, ETipoLog.Info.ToString(), "ExecuteAsync");
 
                     _sendMstServicePolling.SendNotificaQuadraturePollingToMonitoringService(_sessione, _config.MonitoringServiceUrl, _logger, ETipoMetodoNotificaQuadratureOre.Alive, ETipoLog.Info, "Start Polling");
 
@@ -60,7 +62,7 @@ namespace GestioneNotificheQuadratureOre.Serivces
                     foreach (var studio in liStudi)
                     {
 #if DEBUG
-                        if (studio.First().IdStudio != 78)
+                        if (studio.First().IdStudio != 2)
                             continue;
 #endif
 
@@ -214,7 +216,7 @@ namespace GestioneNotificheQuadratureOre.Serivces
                 if (!string.IsNullOrEmpty(result))
                 {
                     liMailNotificheNonRisucite.Add(mail);
-                    _logger.Info("Invio mail all'utente " + mail.To.First() + " FALLITO", _idService, ETipoLog.Info.ToString(), "SendMails");
+                    _logger.Info("Invio mail all'utente " + mail.To.First() + " FALLITO - " + result, _idService, ETipoLog.Info.ToString(), "SendMails");
                     _sendMstServicePolling.SendNotificaQuadraturePollingToMonitoringService(_sessione, _config.MonitoringServiceUrl, _logger, ETipoMetodoNotificaQuadratureOre.SendMail, ETipoLog.Exception, "SendMail fallita per l'utente: " + mail.To.First() + " - CAUSA: " + result);
                 }
                 else
